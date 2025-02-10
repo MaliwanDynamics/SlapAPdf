@@ -1,0 +1,47 @@
+plugins {
+    id 'java'
+    id 'application'
+    id "org.beryx.runtime" version "1.13.1"
+    id "com.github.johnrengelman.shadow" version "8.1.1" // Creates the 'all' fat jar
+}
+
+group = 'md.slapapdf'
+version = '0.1.1'
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+application {
+    mainClassName = 'md.slapapdf.Main'
+    mainModule.set("md.slapapdf")
+}
+
+tasks {
+    shadowJar {
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+        from(sourceSets["test"].output)
+        archiveBaseName.set("SlapAPdf")
+        mergeServiceFiles()
+    }
+}
+
+runtime {
+    addOptions("--strip-debug", "--compress", "2", "--no-header-files", "--no-man-pages")
+    jpackage {
+        imageOptions = ["--win-console"]
+        mainJar = 'SlapAPdf-0.1.0-all.jar' // Allows for the embedded selenium and chrome driver etc for demo only
+    }
+}
+
+dependencies {
+    implementation 'org.apache.pdfbox:pdfbox:3.0.4'
+
+    implementation 'org.seleniumhq.selenium:selenium-java:4.28.1'
+    implementation 'org.seleniumhq.selenium:selenium-chrome-driver:4.28.1'
+}
+
+test {
+    useJUnitPlatform()
+}
