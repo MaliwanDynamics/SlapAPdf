@@ -16,35 +16,6 @@ import java.util.UUID;
 
 public class PdfMaker {
 
-    public void createPdfFromImage(BufferedImage bufferedImage, float pageScaleToImage) throws IOException {
-
-        final File tempImageFile = new File(".\\" + UUID.randomUUID() + ".jpeg");
-        try (PDDocument pdfDoc = new PDDocument()) {
-
-            if (ImageIO.write(bufferedImage, "jpeg", tempImageFile)) {
-                addImage(pdfDoc, tempImageFile, pageScaleToImage);
-                pdfDoc.save(".\\SlapAPdfOut-" + UUID.randomUUID() + ".pdf");
-            }
-
-        } finally {
-            if (!tempImageFile.delete()) {
-                System.out.println("Unable to delete temp image file");
-            }
-        }
-    }
-
-    void addImage(PDDocument pdfDocument, File tempImageFile, float scaleDownRatio) throws IOException {
-
-        final PDImageXObject pdImage = PDImageXObject.createFromFileByContent(tempImageFile, pdfDocument);
-        final PDPage pdPage = new PDPage(new PDRectangle(pdImage.getWidth() * scaleDownRatio, pdImage.getHeight() * scaleDownRatio));
-        final PDRectangle pageSize = pdPage.getMediaBox();
-        pdfDocument.addPage(pdPage);
-
-        try (PDPageContentStream pdPageStream = new PDPageContentStream(pdfDocument, pdPage)) {
-            pdPageStream.drawImage(pdImage, 0, 0, pageSize.getWidth(), pageSize.getHeight());
-        }
-    }
-
     public void createPdfFromImages(List<BufferedImage> images, float pageScaleToImage) throws IOException {
 
         try (PDDocument pdfDocument = new PDDocument()) {
@@ -68,6 +39,7 @@ public class PdfMaker {
         float offsetY = pdPage.getMediaBox().getHeight();
 
         try (PDPageContentStream pdPageStream = new PDPageContentStream(pdDocument, pdPage)) {
+
             for (BufferedImage image : images) {
 
                 float dynamicHeight = image.getHeight() * pageScaleToImage;
