@@ -12,14 +12,14 @@ import static md.slapapdf.DriverWrapper.*;
 
 class ScreenshotMaker {
 
-    private static final int MAX_SIZE = 150;
     private static final float DEFAULT_SCALE = 1;
 
-    List<BufferedImage> screenshotAll(DriverWrapper driver, String url) throws IOException, InterruptedException {
+    List<BufferedImage> screenshotAll(DriverWrapper driver,
+                                      String url) throws IOException, InterruptedException {
         return screenshotAll(driver, url, DEFAULT_SCALE);
     }
 
-    // TODO: Adjust wait times without thread sleep based on connections speed and override?
+    // TODO: Adjust/use dynamic wait times without thread sleep based on connections speed and override?
     List<BufferedImage> screenshotAll(DriverWrapper driver,
                                       String url,
                                       float scale) throws IOException, InterruptedException {
@@ -30,41 +30,35 @@ class ScreenshotMaker {
         Thread.sleep(1100);
 
         int pageHeight = driver.getPageHeight();
-        int lastOffset = 0;
+        int lastYOffset = 0;
         int yOffset = 0;
-        int count = 0;
         int crop = 0;
 
         List<File> tempImageFiles = new ArrayList<>();
-        while ((pageHeight > 0) && (yOffset >= 0) && (yOffset != pageHeight) && (count <= MAX_SIZE)) {
+        while ((pageHeight > 0) && (yOffset >= 0) && (yOffset != pageHeight)) {
 
-            if (MAX_SIZE == count || pageHeight > 64000) {
-                System.out.println("Max Size Reached, unable to continue scanning");
-                break;
-            }
             tempImageFiles.add(driver.takeScreenshot());
             driver.scrollPageDown().implicitWait(Duration.ofSeconds(7));
             Thread.sleep(910);
 
             yOffset = driver.getYOffset();
-            if (lastOffset == yOffset) {
+            if (lastYOffset == yOffset) {
                 break;
             } else {
-                crop = yOffset - lastOffset;
-                lastOffset = yOffset;
+                crop = yOffset - lastYOffset;
+                lastYOffset = yOffset;
             }
             if (yOffset == pageHeight) {
                 tempImageFiles.add(driver.takeScreenshot());
                 Thread.sleep(910);
             }
-
-            count++;
         }
 
         return convertFilesToBufferedImages(tempImageFiles, crop);
     }
 
-    List<BufferedImage> convertFilesToBufferedImages(List<File> tempImageFiles, int crop) throws IOException {
+    List<BufferedImage> convertFilesToBufferedImages(List<File> tempImageFiles,
+                                                     int lastImageCrop) throws IOException {
 
         List<BufferedImage> bufferedImageFiles = new ArrayList<>();
         for (int index = 0; index < tempImageFiles.size(); index++) {
@@ -74,10 +68,14 @@ class ScreenshotMaker {
 
             // if last portion of pagedown screenshot is smaller due to scroll size and page height diff
             if ((index == tempImageFiles.size() - 1)) {
-                if (!((crop > 0) && (image.getHeight() > crop))) {
+                if (!((lastImageCrop > 0) && (image.getHeight() > lastImageCrop))) {
                     System.out.println("Crop failed");
                 } else {
-                    image = image.getSubimage(0, image.getHeight() - crop, image.getWidth(), crop);
+                    image = image.getSubimage(
+                            0,
+                            image.getHeight() - lastImageCrop,
+                            image.getWidth(),
+                            lastImageCrop);
                 }
             }
             bufferedImageFiles.add(image);

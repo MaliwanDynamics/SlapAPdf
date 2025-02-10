@@ -14,8 +14,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 
-import static org.apache.pdfbox.pdmodel.PDPageContentStream.AppendMode.APPEND;
-
 public class PdfMaker {
 
     public void createPdfFromImage(BufferedImage bufferedImage, float pageScaleToImage) throws IOException {
@@ -49,48 +47,45 @@ public class PdfMaker {
 
     public void createPdfFromImages(List<BufferedImage> images, float pageScaleToImage) throws IOException {
 
-        final File tempImageFile = new File(".\\" + UUID.randomUUID() + ".jpeg");
-        try (PDDocument pdfDoc = new PDDocument()) {
+        try (PDDocument pdfDocument = new PDDocument()) {
 
-            addImages(pdfDoc, tempImageFile, pageScaleToImage, images);
-            pdfDoc.save(".\\SlapAPdfOut-" + UUID.randomUUID() + ".pdf");
-
-        } finally {
-            if (!tempImageFile.delete()) {
-                System.out.println("Unable to delete temp image file");
-            }
+            addImages(pdfDocument, pageScaleToImage, images);
+            pdfDocument.save(".\\SlapAPdfOut-" + UUID.randomUUID() + ".pdf");
         }
     }
 
-    void addImages(PDDocument pdfDoc,
-                   File tempImageFile,
-                   float pageScaleToImage,
-                   List<BufferedImage> images) throws IOException {
+    void addImages(PDDocument pdDocument, float pageScaleToImage, List<BufferedImage> images) throws IOException {
 
-        Rectangle imageDimension = getPdfImageDimension(images);
+        final Rectangle imageDimension = getPdfImageDimension(images);
+        final float scaledWidth = ((float) imageDimension.getWidth()) * pageScaleToImage;
         final PDRectangle pdRectangle = new PDRectangle(
-                (float) (imageDimension.getWidth() * pageScaleToImage),
-                (float) (imageDimension.getHeight() * pageScaleToImage));
+                scaledWidth, ((float) imageDimension.getHeight()) * pageScaleToImage);
 
+        final File tempImageFile = new File(".\\" + UUID.randomUUID() + ".jpeg");
         final PDPage pdPage = new PDPage(pdRectangle);
-        pdfDoc.addPage(pdPage);
+        pdDocument.addPage(pdPage);
+
         float offsetY = pdPage.getMediaBox().getHeight();
 
-        try (PDPageContentStream pdPageStream = new PDPageContentStream(pdfDoc, pdPage, APPEND, false)) {
+        try (PDPageContentStream pdPageStream = new PDPageContentStream(pdDocument, pdPage)) {
             for (BufferedImage image : images) {
 
                 float dynamicHeight = image.getHeight() * pageScaleToImage;
 
                 if (ImageIO.write(image, "jpeg", tempImageFile)) {
-                    PDImageXObject pdImage = PDImageXObject.createFromFileByContent(tempImageFile, pdfDoc);
+                    PDImageXObject pdImage = PDImageXObject.createFromFileByContent(tempImageFile, pdDocument);
                     pdPageStream.drawImage(
                             pdImage,
                             0,
                             offsetY - dynamicHeight,
-                            image.getWidth() * pageScaleToImage,
+                            scaledWidth,
                             dynamicHeight);
                 }
                 offsetY -= dynamicHeight;
+            }
+        } finally {
+            if (!tempImageFile.delete()) {
+                System.out.println("Unable to delete temp image file");
             }
         }
     }
